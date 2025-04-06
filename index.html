@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zenga Number Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            padding: 20px;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .number-display {
+            font-size: 5rem;
+            font-weight: bold;
+            color: #6a11cb;
+            height: 120px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 30px 0;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            background-color: #2575fc;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(37, 117, 252, 0.4);
+        }
+        
+        .btn:hover {
+            background-color: #6a11cb;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(106, 17, 203, 0.5);
+        }
+        
+        .btn:active {
+            transform: translateY(1px);
+        }
+        
+        .btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        
+        .counter {
+            font-size: 1.2rem;
+            color: #666;
+            margin: 20px 0;
+        }
+        
+        .history-container {
+            position: relative;
+            margin-top: 30px;
+        }
+        
+        .history-btn {
+            background-color: #f8f9fa;
+            border: 2px solid #ddd;
+            color: #666;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.5rem;
+            margin: 0 auto;
+        }
+        
+        .history-btn:hover {
+            background-color: #e9ecef;
+            color: #333;
+            border-color: #adb5bd;
+        }
+        
+        .history-panel {
+            display: none;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .history-panel.show {
+            display: block;
+        }
+        
+        .history-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .history-item {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 40px;
+            height: 40px;
+            background-color: #f1f3f5;
+            border-radius: 5px;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        .animate-number {
+            animation: pulse 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Zenga Number Game</h1>
+        <div class="number-display" id="numberDisplay">?</div>
+        <div class="counter" id="counter">0/54 numbers selected</div>
+        <button class="btn" id="actionButton">Generate Random Number</button>
+        
+        <div class="history-container">
+            <div class="history-btn" id="historyBtn">
+                <i>📋</i>
+            </div>
+            <div class="history-panel" id="historyPanel">
+                <h3>Number History</h3>
+                <div class="history-list" id="historyList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const numberDisplay = document.getElementById('numberDisplay');
+            const actionButton = document.getElementById('actionButton');
+            const counterEl = document.getElementById('counter');
+            const historyBtn = document.getElementById('historyBtn');
+            const historyPanel = document.getElementById('historyPanel');
+            const historyList = document.getElementById('historyList');
+            
+            let availableNumbers = [];
+            let usedNumbers = [];
+            
+            // Initialize game or load from local storage
+            function initGame() {
+                // Try to load game state from local storage
+                const savedState = localStorage.getItem('zengaGameState');
+                
+                if (savedState) {
+                    const state = JSON.parse(savedState);
+                    usedNumbers = state.usedNumbers || [];
+                    
+                    // Create available numbers array excluding used numbers
+                    availableNumbers = Array.from({length: 54}, (_, i) => i + 1)
+                        .filter(num => !usedNumbers.includes(num));
+                    
+                    // Update UI based on saved state
+                    updateCounter();
+                    updateHistoryList();
+                    
+                    // Show the last number if any
+                    if (usedNumbers.length > 0) {
+                        numberDisplay.textContent = usedNumbers[usedNumbers.length - 1];
+                    }
+                    
+                    // Check if all numbers are used
+                    if (availableNumbers.length === 0) {
+                        actionButton.textContent = 'Restart Game';
+                    }
+                } else {
+                    // Fresh start
+                    resetGame();
+                }
+            }
+            
+            function resetGame() {
+                availableNumbers = Array.from({length: 54}, (_, i) => i + 1);
+                usedNumbers = [];
+                numberDisplay.textContent = '?';
+                actionButton.textContent = 'Generate Random Number';
+                updateCounter();
+                updateHistoryList();
+                saveState();
+            }
+            
+            function generateRandomNumber() {
+                if (availableNumbers.length === 0) {
+                    resetGame();
+                    return;
+                }
+                
+                // Get a random index from available numbers
+                const randomIndex = Math.floor(Math.random() * availableNumbers.length);
+                const randomNumber = availableNumbers[randomIndex];
+                
+                // Remove the number from available and add to used
+                availableNumbers.splice(randomIndex, 1);
+                usedNumbers.push(randomNumber);
+                
+                // Update UI
+                numberDisplay.textContent = randomNumber;
+                numberDisplay.classList.add('animate-number');
+                setTimeout(() => {
+                    numberDisplay.classList.remove('animate-number');
+                }, 500);
+                
+                updateCounter();
+                updateHistoryList();
+                saveState();
+                
+                // Check if all numbers are used
+                if (availableNumbers.length === 0) {
+                    actionButton.textContent = 'Restart Game';
+                }
+            }
+            
+            function updateCounter() {
+                counterEl.textContent = `${usedNumbers.length}/54 numbers selected`;
+            }
+            
+            function updateHistoryList() {
+                historyList.innerHTML = '';
+                usedNumbers.forEach(num => {
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'history-item';
+                    historyItem.textContent = num;
+                    historyList.appendChild(historyItem);
+                });
+            }
+            
+            function saveState() {
+                const gameState = {
+                    usedNumbers: usedNumbers
+                };
+                localStorage.setItem('zengaGameState', JSON.stringify(gameState));
+            }
+            
+            // Event listeners
+            actionButton.addEventListener('click', generateRandomNumber);
+            
+            historyBtn.addEventListener('click', function() {
+                historyPanel.classList.toggle('show');
+            });
+            
+            // Initialize the game
+            initGame();
+        });
+    </script>
+</body>
+  </html>
